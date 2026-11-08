@@ -6,7 +6,10 @@ var instance *zap.Logger
 
 func Logger() *zap.Logger {
 	if instance == nil {
-		instance, _ = zap.NewProduction()
+		instance, _ = zap.NewProduction(
+			zap.WithCaller(false),
+			zap.AddStacktrace(zap.DPanicLevel),
+		)
 	}
 	return instance
 }

@@ -1,0 +1,32 @@
+services:
+  mesh-db:
+    image: postgres
+    volumes:
+      - ./.db:/var/lib/postgresql
+    env_file:
+      - .env
+    environment:
+      - PGUSER=postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    network_mode: "host"
+
+  mesh-server:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    ports:
+      - "8083:8080"
+    env_file:
+      - .env
+    environment:
+      - PORT=8080
+    depends_on:
+      mesh-db:
+        condition: service_healthy
+    restart: unless-stopped
+    network_mode: "host"

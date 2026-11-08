@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"mesh.leinadium.dev/internal/logger"
 )
 
 type PGParams struct {
@@ -27,7 +29,7 @@ func NewPGStore(p PGParams) *PGStore {
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		fmt.Printf("NewPGStore: %v\n", err)
+		logger.Error("newpgstore", zap.Error(err))
 		panic("failed to connect to database")
 	}
 
@@ -69,14 +71,14 @@ func (s *PGStore) NewEvent(ctx context.Context, event Event) error {
 
 func (s *PGStore) Nodes(ctx context.Context, from time.Time) ([]*Node, error) {
 	// getting positions
-	positions, err := gorm.G[Position](s.db).Where("time > ?", from).Find(ctx)
+	positions, err := gorm.G[Position](s.db).Where("received_at > ?", from).Find(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// getting telemetries
 	subQuery := s.db.Table("telemtries").
-		Select("*, ROW_NUMBER() OVER (PARTITION BY id ORDER BY timestamp DESC) as rn")
+		Select("*, ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY received_at DESC) as rn")
 
 	var telemetries []Telemetry
 	err = s.db.Table("(?) as ranked", subQuery).

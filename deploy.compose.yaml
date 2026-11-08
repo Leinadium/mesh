@@ -1,0 +1,12 @@
+services:
+  mesh-db:
+    networks:
+      - internal
+
+  mesh-server:
+    networks:
+      - internal
+
+networks:
+  internal:
+    external: true

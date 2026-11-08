@@ -27,7 +27,7 @@ type Position struct {
 	Accuracy   int32      `json:"acc"`
 	Satellites int32      `json:"sat"`
 
-	Timestamp time.Time `json:"time"`
+	ReceivedAt time.Time `gorm:"primary_key" json:"received_at"`
 }
 
 func (p Position) Type() EventType {
@@ -42,7 +42,7 @@ type Telemetry struct {
 	NodeID  NodeID     `gorm:"primary_key" json:"id"`
 	Battery null.Int32 `json:"bat"`
 
-	Timestamp time.Time `json:"time"`
+	ReceivedAt time.Time `gorm:"primary_key" json:"received_at"`
 }
 
 func (p Telemetry) Type() EventType {

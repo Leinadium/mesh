@@ -1,12 +1,13 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+	"mesh.leinadium.dev/internal/logger"
 	"mesh.leinadium.dev/internal/store"
 )
 
@@ -45,7 +46,7 @@ func (a *API) getNode(c *gin.Context) {
 }
 
 func (a *API) error(c *gin.Context, status int, err error) {
-	fmt.Printf("error: %v\n", err)
+	logger.Error("api error", zap.Error(err))
 	c.JSON(status, gin.H{"error": err.Error()})
 }
 

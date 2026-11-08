@@ -37,12 +37,14 @@ func New(p Params) (*API, error) {
 	engine.RemoveExtraSlash = false
 	_ = engine.SetTrustedProxies(nil)
 
-	engine.Use(cors.New(cors.Config{
-		AllowOrigins:     p.AllowOrigins,
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type"},
-		AllowCredentials: true,
-	}))
+	if len(p.AllowOrigins) > 0 {
+		engine.Use(cors.New(cors.Config{
+			AllowOrigins:     p.AllowOrigins,
+			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+			AllowHeaders:     []string{"Content-Type"},
+			AllowCredentials: true,
+		}))
+	}
 
 	api := &API{
 		e: engine,

@@ -61,6 +61,9 @@ func decodeServiceEnvelopeData(id store.NodeID, portNum meshtastic.PortNum, payl
 		if err := proto.Unmarshal(payload, &pos); err != nil {
 			return nil, errors.New("serviceEnvelope: could not decode position payload")
 		}
+		if pos.Timestamp == 0 {
+			return nil, errors.New("timestamp is zero")
+		}
 		return &store.Position{
 			NodeID:     id,
 			Latitude:   parseCoord(pos.LatitudeI),
@@ -68,7 +71,7 @@ func decodeServiceEnvelopeData(id store.NodeID, portNum meshtastic.PortNum, payl
 			Altitude:   null.Int32FromPtr(pos.Altitude),
 			Accuracy:   int32(pos.GpsAccuracy),
 			Satellites: int32(pos.SatsInView),
-			Timestamp:  time.Unix(int64(pos.Timestamp), 0),
+			ReceivedAt: time.Unix(int64(pos.Timestamp), 0),
 		}, nil
 
 	case meshtastic.PortNum_TELEMETRY_APP:
@@ -76,15 +79,19 @@ func decodeServiceEnvelopeData(id store.NodeID, portNum meshtastic.PortNum, payl
 		if err := proto.Unmarshal(payload, &tel); err != nil {
 			return nil, errors.New("serviceEnvelope: could not decode telemetry payload")
 		}
+		if tel.Time == 0 {
+			return nil, errors.New("timestamp is zero")
+		}
 
 		device := tel.GetDeviceMetrics()
 		if device == nil {
-			return nil, errors.New("serviceEnvelope: device metris is nil in telemetry payload")
+			return nil, errors.New("serviceEnvelope: device metrics is nil in telemetry payload")
 		}
 
 		return &store.Telemetry{
-			NodeID:  id,
-			Battery: null.Int32From(int32(device.GetBatteryLevel())),
+			NodeID:     id,
+			Battery:    null.Int32From(int32(device.GetBatteryLevel())),
+			ReceivedAt: time.Unix(int64(tel.Time), 0),
 		}, nil
 
 	default:
