@@ -11,6 +11,7 @@ type EventType string
 const (
 	EventTypePosition  EventType = "position"
 	EventTypeTelemetry EventType = "telemetry"
+	EventTypeUser      EventType = "user"
 )
 
 type Event interface {
@@ -18,6 +19,19 @@ type Event interface {
 }
 
 type NodeID int
+
+type User struct {
+	NodeID    NodeID `gorm:"primary_key" json:"id"`
+	ShortName string `json:"short_name"`
+}
+
+func (u User) Type() EventType {
+	return EventTypeUser
+}
+
+func (User) TableName() string {
+	return "users"
+}
 
 type Position struct {
 	NodeID     NodeID     `gorm:"primary_key" json:"id"`
@@ -55,6 +69,7 @@ func (Telemetry) TableName() string {
 
 type Node struct {
 	ID               NodeID      `json:"id"`
+	Name             string      `json:"name"`
 	CurrentTelemetry *Telemetry  `json:"current_telemetry"`
 	LatestPositions  []*Position `json:"latest_positions"`
 }

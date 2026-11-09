@@ -13,7 +13,6 @@ services:
       timeout: 5s
       retries: 10
     restart: unless-stopped
-    network_mode: "host"
 
   mesh-server:
     build:
@@ -29,4 +28,3 @@ services:
       mesh-db:
         condition: service_healthy
     restart: unless-stopped
-    network_mode: "host"

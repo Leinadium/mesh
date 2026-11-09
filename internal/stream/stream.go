@@ -87,7 +87,7 @@ func (h *Handler) handleGen() func(mqtt.Client, mqtt.Message) {
 	return func(client mqtt.Client, msg mqtt.Message) {
 		e, err := event.FromBytes(msg.Payload())
 		if err != nil {
-			logger.Warn("stream: could not decode event", zap.String("type", string(e.Type())), zap.Error(err))
+			logger.Warn("stream: could not decode event", zap.Error(err))
 			return
 		}
 		logger.Info("stream: new event", zap.String("type", string(e.Type())))

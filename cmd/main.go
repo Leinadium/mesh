@@ -39,6 +39,7 @@ func main() {
 	apiSvc, err := api.New(api.Params{
 		Server:       serverSvc,
 		AllowOrigins: p.AllowOrigins,
+		SecretKey:    p.SecretKey,
 	})
 	if err != nil {
 		panic(err.Error())

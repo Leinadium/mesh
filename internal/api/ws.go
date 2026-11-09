@@ -1,17 +1,20 @@
 package api
 
 import (
-	"log"
+	"errors"
 	"net/http"
+	"syscall"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
+	"mesh.leinadium.dev/internal/logger"
 )
 
 func (a *API) handleWebsocket(c *gin.Context) {
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		log.Printf("websocket upgrade error: %v\n", err)
+		logger.Error("websocket upgrade", zap.Error(err))
 		return
 	}
 	defer conn.Close()
@@ -25,7 +28,9 @@ func (a *API) handleWebsocket(c *gin.Context) {
 			return
 		case event := <-ch:
 			if err := conn.WriteJSON(event); err != nil {
-				log.Printf("websocket write error: %v\n", err)
+				if !errors.Is(err, syscall.EPIPE) {
+					logger.Warn("websocket write", zap.Error(err))
+				}
 			}
 		}
 	}

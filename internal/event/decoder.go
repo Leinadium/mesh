@@ -8,6 +8,7 @@ import (
 	"buf.build/gen/go/meshtastic/protobufs/protocolbuffers/go/meshtastic"
 	"github.com/guregu/null/v6"
 	"google.golang.org/protobuf/proto"
+	"mesh.leinadium.dev/internal/logger"
 	"mesh.leinadium.dev/internal/store"
 )
 
@@ -56,13 +57,26 @@ func asServiceEnvelope(b []byte) (store.Event, error) {
 
 func decodeServiceEnvelopeData(id store.NodeID, portNum meshtastic.PortNum, payload []byte) (store.Event, error) {
 	switch portNum {
+	case meshtastic.PortNum_NODEINFO_APP:
+		var user meshtastic.User
+		if err := proto.Unmarshal(payload, &user); err != nil {
+			return nil, errors.New("serviceEnvelope: could not decode user payload")
+		}
+		return &store.User{
+			NodeID:    id,
+			ShortName: user.ShortName,
+		}, nil
+
 	case meshtastic.PortNum_POSITION_APP:
 		var pos meshtastic.Position
 		if err := proto.Unmarshal(payload, &pos); err != nil {
 			return nil, errors.New("serviceEnvelope: could not decode position payload")
 		}
-		if pos.Timestamp == 0 {
-			return nil, errors.New("timestamp is zero")
+
+		positionTime := time.Now()
+		if pos.Timestamp != 0 {
+			logger.Warn("decoder: position with timestamp=0")
+			positionTime = time.Unix(int64(pos.Timestamp), 0)
 		}
 		return &store.Position{
 			NodeID:     id,
@@ -71,27 +85,29 @@ func decodeServiceEnvelopeData(id store.NodeID, portNum meshtastic.PortNum, payl
 			Altitude:   null.Int32FromPtr(pos.Altitude),
 			Accuracy:   int32(pos.GpsAccuracy),
 			Satellites: int32(pos.SatsInView),
-			ReceivedAt: time.Unix(int64(pos.Timestamp), 0),
+			ReceivedAt: positionTime,
 		}, nil
 
 	case meshtastic.PortNum_TELEMETRY_APP:
 		var tel meshtastic.Telemetry
 		if err := proto.Unmarshal(payload, &tel); err != nil {
-			return nil, errors.New("serviceEnvelope: could not decode telemetry payload")
+			return nil, errors.New("decoder: could not decode telemetry payload")
 		}
-		if tel.Time == 0 {
-			return nil, errors.New("timestamp is zero")
+		telemetryTime := time.Now()
+		if tel.Time != 0 {
+			logger.Warn("decoder: telemetry has time=0")
+			telemetryTime = time.Unix(int64(tel.Time), 0)
 		}
 
 		device := tel.GetDeviceMetrics()
 		if device == nil {
-			return nil, errors.New("serviceEnvelope: device metrics is nil in telemetry payload")
+			return nil, errors.New("decoder: telemetry is not device metrics")
 		}
 
 		return &store.Telemetry{
 			NodeID:     id,
 			Battery:    null.Int32From(int32(device.GetBatteryLevel())),
-			ReceivedAt: time.Unix(int64(tel.Time), 0),
+			ReceivedAt: telemetryTime,
 		}, nil
 
 	default:

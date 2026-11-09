@@ -20,11 +20,13 @@ type Server interface {
 type Params struct {
 	Server       Server
 	AllowOrigins []string
+	SecretKey    string
 }
 
 type API struct {
-	e *gin.Engine
-	s Server
+	e      *gin.Engine
+	s      Server
+	secret string
 }
 
 func New(p Params) (*API, error) {
@@ -47,8 +49,13 @@ func New(p Params) (*API, error) {
 	}
 
 	api := &API{
-		e: engine,
-		s: p.Server,
+		e:      engine,
+		s:      p.Server,
+		secret: p.SecretKey,
+	}
+
+	if p.SecretKey != "" {
+		engine.Use(api.auth())
 	}
 
 	// websocket
@@ -57,7 +64,7 @@ func New(p Params) (*API, error) {
 	// v1 endpoints
 	v1 := engine.Group("/v1")
 	v1.GET("/node", api.getNodes)
-	v1.GET("/node/:node", api.getNode)
+	v1.GET("/node/:id", api.getNode)
 
 	return api, nil
 }

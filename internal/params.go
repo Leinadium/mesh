@@ -6,6 +6,7 @@ type Params struct {
 	Port           int      `env:"PORT" envDefault:"8080"`
 	DatabaseDSN    string   `env:"DATABASE_DSN"`
 	AllowOrigins   []string `env:"ALLOW_ORIGINS"`
+	SecretKey      string   `env:"SECRET_KEY"`
 	StreamURL      string   `env:"STREAM_URL,required"`
 	StreamTopic    string   `env:"STREAM_TOPIC,required"`
 	StreamClientID string   `env:"STREAM_CLIENTID,required"`

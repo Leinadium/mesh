@@ -50,6 +50,11 @@ func (a *API) error(c *gin.Context, status int, err error) {
 	c.JSON(status, gin.H{"error": err.Error()})
 }
 
+func (a *API) abort(c *gin.Context, status int, err error) {
+	a.error(c, status, err)
+	c.Abort()
+}
+
 func timeFromStr(s string) (time.Time, bool) {
 	if s == "" {
 		return time.Time{}, false

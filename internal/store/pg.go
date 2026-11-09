@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	glogger "gorm.io/gorm/logger"
 	"mesh.leinadium.dev/internal/logger"
 )
 
@@ -27,7 +28,9 @@ func NewPGStore(p PGParams) *PGStore {
 	if dsn == "" {
 		panic("dsn is required")
 	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: glogger.Default.LogMode(glogger.Silent),
+	})
 	if err != nil {
 		logger.Error("newpgstore", zap.Error(err))
 		panic("failed to connect to database")
@@ -36,6 +39,7 @@ func NewPGStore(p PGParams) *PGStore {
 	if p.AutoMigrate {
 		_ = db.AutoMigrate(&Position{})
 		_ = db.AutoMigrate(&Telemetry{})
+		_ = db.AutoMigrate(&User{})
 	}
 
 	streamer := Streamer[Event]()
@@ -65,6 +69,13 @@ func (s *PGStore) NewEvent(ctx context.Context, event Event) error {
 		} else {
 			return gorm.G[Telemetry](s.db).Create(ctx, tel)
 		}
+	case EventTypeUser:
+		user, ok := event.(*User)
+		if !ok {
+			return errors.New("pgstore new event: user is unknown")
+		} else {
+			return s.db.Save(user).Error
+		}
 	}
 	return fmt.Errorf("pgstore new event: unknown event %s", event.Type())
 }
@@ -88,8 +99,22 @@ func (s *PGStore) Nodes(ctx context.Context, from time.Time) ([]*Node, error) {
 		return nil, err
 	}
 
+	users, err := gorm.G[User](s.db).Find(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// merging
 	m := make(map[NodeID]*Node)
+	for _, user := range users {
+		node, ok := m[user.NodeID]
+		if !ok {
+			node = &Node{ID: user.NodeID}
+		}
+		node.Name = user.ShortName
+		m[user.NodeID] = node
+	}
+
 	for _, pos := range positions {
 		node, ok := m[pos.NodeID]
 		if !ok {
@@ -117,14 +142,19 @@ func (s *PGStore) Nodes(ctx context.Context, from time.Time) ([]*Node, error) {
 
 func (s *PGStore) Node(ctx context.Context, id NodeID) (*Node, error) {
 	// getting positions
-	positions, err := gorm.G[*Position](s.db).Find(ctx)
+	positions, err := gorm.G[*Position](s.db).Where("node_id = ?", id).Find(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := gorm.G[User](s.db).Where("node_id = ?", id).First(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	var telemetry Telemetry
-	err = s.db.Where("id = ?", id).
-		Order("time DESC").
+	err = s.db.Where("node_id = ?", id).
+		Order("received_at DESC").
 		First(&telemetry).Error
 	if err != nil {
 		return nil, err
@@ -132,6 +162,7 @@ func (s *PGStore) Node(ctx context.Context, id NodeID) (*Node, error) {
 
 	return &Node{
 		ID:               id,
+		Name:             user.ShortName,
 		CurrentTelemetry: &telemetry,
 		LatestPositions:  positions,
 	}, nil
