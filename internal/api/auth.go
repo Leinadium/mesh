@@ -31,7 +31,6 @@ func (a *API) auth() gin.HandlerFunc {
 		}
 
 		if string(tokenBin) != a.secret {
-			println(string(tokenBin))
 			a.abort(c, http.StatusUnauthorized, errors.New("invalid authorization"))
 			return
 		}
