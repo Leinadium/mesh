@@ -1,0 +1,202 @@
+openapi: 3.0.0
+info:
+  title: mesh
+  version: 1.0.0
+  description: API server for tracker information
+
+components:
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+      description: Basic authentication using a shared secret key (passed as base64-encoded secret).
+
+  schemas:
+    NodeID:
+      type: integer
+      format: int64
+      example: 42
+
+    Position:
+      type: object
+      required:
+        - id
+        - acc
+        - sat
+        - received_at
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeID"
+        lat:
+          type: number
+          format: double
+          nullable: true
+          example: -22.9068
+        lon:
+          type: number
+          format: double
+          nullable: true
+          example: -43.1729
+        alt:
+          type: integer
+          format: int32
+          nullable: true
+          example: 10
+        acc:
+          type: integer
+          format: int32
+          example: 5
+        sat:
+          type: integer
+          format: int32
+          example: 8
+        received_at:
+          type: string
+          format: date-time
+          example: "2026-06-06T12:00:00Z"
+
+    Telemetry:
+      type: object
+      required:
+        - id
+        - received_at
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeID"
+        bat:
+          type: integer
+          format: int32
+          nullable: true
+          example: 85
+        received_at:
+          type: string
+          format: date-time
+          example: "2026-06-06T12:00:00Z"
+
+    Node:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: "#/components/schemas/NodeID"
+        name:
+          type: string
+          example: "Base Station"
+        current_telemetry:
+          $ref: "#/components/schemas/Telemetry"
+        latest_positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Position"
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          example: "invalid authorization"
+
+security:
+  - BasicAuth: []
+
+paths:
+  /v1/node:
+    get:
+      summary: Get all nodes
+      description: Retrieves a list of nodes filtered optionally from a given timestamp.
+      parameters:
+        - name: from
+          in: query
+          required: false
+          description: Lower bound timestamp filter matching format `2006-01-02T15:04:05` (defaults to 3 hours ago if omitted).
+          schema:
+            type: string
+            example: "2026-06-06T09:00:00"
+      responses:
+        "200":
+          description: Successfully retrieved nodes list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - nodes
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Node"
+        "400":
+          description: Bad request (malformed header or params).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized (invalid secret key).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/node/{id}:
+    get:
+      summary: Get node by ID
+      description: Retrieves details of a specific node by its integer ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Numeric Node ID
+          schema:
+            $ref: "#/components/schemas/NodeID"
+      responses:
+        "200":
+          description: Successfully retrieved node.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - node
+                properties:
+                  node:
+                    $ref: "#/components/schemas/Node"
+        "400":
+          description: Bad request (invalid ID parameter format).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ws:
+    get:
+      summary: WebSocket Event Stream
+      description: Establishes a WebSocket connection to stream real-time events (`position`, `telemetry`, or `user`).
+      responses:
+        "101":
+          description: Switching Protocols to WebSocket.
+        "401":
+          description: Unauthorized.
