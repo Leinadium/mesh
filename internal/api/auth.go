@@ -13,15 +13,21 @@ const authPrefix = "Basic "
 
 func (a *API) auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authorization := c.GetHeader("Authorization")
-		if authorization == "" {
-			a.abort(c, http.StatusBadRequest, errors.New("missing Authorization header"))
-			return
-		}
-		token64, found := strings.CutPrefix(authorization, authPrefix)
-		if !found {
-			a.abort(c, http.StatusBadRequest, errors.New("malformed Authorization header. Basic is required"))
-			return
+		var token64 string
+
+		token64 = c.Query("secret")
+		if token64 == "" {
+			authorization := c.GetHeader("Authorization")
+			if authorization == "" {
+				a.abort(c, http.StatusBadRequest, errors.New("missing Authorization header"))
+				return
+			}
+			var found bool
+			token64, found = strings.CutPrefix(authorization, authPrefix)
+			if !found {
+				a.abort(c, http.StatusBadRequest, errors.New("malformed Authorization header. Basic is required"))
+				return
+			}
 		}
 
 		tokenBin, err := base64.StdEncoding.DecodeString(token64)
