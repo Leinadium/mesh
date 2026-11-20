@@ -43,7 +43,7 @@ func New(p Params) (*API, error) {
 		engine.Use(cors.New(cors.Config{
 			AllowOrigins:     p.AllowOrigins,
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-			AllowHeaders:     []string{"Content-Type"},
+			AllowHeaders:     []string{"Content-Type", "Authorization"},
 			AllowCredentials: true,
 		}))
 	}
